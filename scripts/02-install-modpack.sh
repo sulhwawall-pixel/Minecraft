@@ -129,9 +129,23 @@ if compgen -G "forge-*-installer.jar" >/dev/null && [[ ! -d "libraries/net/minec
 fi
 
 # Forge 1.20.1 은 unix_args.txt 방식으로 실행한다. 이게 있어야 정상 설치된 것.
-ARGS_FILE="$(find libraries/net/minecraftforge -name unix_args.txt 2>/dev/null | head -1)"
-if [[ -z "$ARGS_FILE" ]]; then
-  warn "unix_args.txt 를 못 찾았습니다. 서버 팩에 포함된 자체 실행 스크립트로 대체합니다."
+#
+# 주의: `set -e` + `pipefail` 아래에서 존재하지 않는 경로에 find 를 걸면 파이프라인이
+# 실패 상태를 반환하고, 그 결과를 변수에 대입하는 순간 스크립트가 아무 메시지 없이
+# 종료된다. 그래서 디렉터리 존재를 먼저 확인하고 `|| true` 로 막아둔다.
+ARGS_FILE=""
+if [[ -d libraries/net/minecraftforge ]]; then
+  ARGS_FILE="$(find libraries/net/minecraftforge -name unix_args.txt 2>/dev/null | head -1 || true)"
+fi
+
+if [[ -n "$ARGS_FILE" ]]; then
+  log "Forge 실행 파일을 확인했습니다: $ARGS_FILE"
+else
+  warn "Forge의 unix_args.txt 를 찾지 못했습니다."
+  warn "서버 팩에 들어있는 jar 로 직접 실행하도록 설정합니다."
+  # 무엇이 들어있는지 보여줘야 다음 조치를 판단할 수 있다.
+  warn "현재 서버 폴더의 jar 목록:"
+  ls -1 ./*.jar 2>/dev/null | sed 's/^/      /' || warn "      (jar 파일이 없습니다)"
 fi
 
 # ------------------------------------------------------------ 6. 시작 스크립트
@@ -187,14 +201,23 @@ JVM_FLAGS=(
   -Dfile.encoding=UTF-8
 )
 
-ARGS_FILE="\$(find libraries/net/minecraftforge -name unix_args.txt 2>/dev/null | head -1)"
+# set -e 아래에서는 find/ls 실패가 그대로 스크립트 종료로 이어지므로 || true 로 막는다.
+ARGS_FILE=""
+if [[ -d libraries/net/minecraftforge ]]; then
+  ARGS_FILE="\$(find libraries/net/minecraftforge -name unix_args.txt 2>/dev/null | head -1 || true)"
+fi
+
 if [[ -n "\$ARGS_FILE" ]]; then
   exec java "\${JVM_FLAGS[@]}" @"\$ARGS_FILE" nogui
-else
-  JAR="\$(ls minecraft_server*.jar forge-*.jar server.jar 2>/dev/null | grep -v installer | head -1)"
-  [[ -n "\$JAR" ]] || { echo "실행할 jar를 찾지 못했습니다."; exit 1; }
-  exec java "\${JVM_FLAGS[@]}" -jar "\$JAR" nogui
 fi
+
+JAR="\$(ls minecraft_server*.jar forge-*.jar server.jar 2>/dev/null | grep -v installer | head -1 || true)"
+if [[ -z "\$JAR" ]]; then
+  echo "실행할 jar를 찾지 못했습니다. 서버 폴더의 내용:" >&2
+  ls -1 >&2
+  exit 1
+fi
+exec java "\${JVM_FLAGS[@]}" -jar "\$JAR" nogui
 EOF
 chmod +x "$SERVER_DIR/start.sh"
 
