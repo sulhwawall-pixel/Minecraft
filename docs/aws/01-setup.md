@@ -178,23 +178,100 @@ Get-ChildItem -Path $HOME -Filter *.pem -Recurse -ErrorAction SilentlyContinue
 
 ## 4. 서버 설치
 
-여기서부터는 **OCI와 완전히 동일합니다.** 스크립트가 x86과 ARM을 모두 지원합니다.
-설치 스크립트가 RAM 8GB를 감지해서 힙 5.5GB, 시야거리 6, 최대 4명으로 자동 조정합니다.
+### 먼저 — 터미널에 붙여넣는 방법
+
+SSH로 접속한 창에서는 **`Ctrl+V`가 안 먹는 경우가 많습니다.**
+
+| 터미널 | 붙여넣기 |
+|---|---|
+| **Windows Terminal / PowerShell** | **마우스 우클릭** (또는 `Ctrl+Shift+V`) |
+| PuTTY | **마우스 우클릭** |
+| 맥 터미널 | `Cmd+V` |
+
+명령을 복사한 뒤 **터미널 창에서 마우스 오른쪽 버튼을 한 번 클릭**하면 붙습니다.
+붙여넣은 뒤 **Enter** 를 눌러야 실행됩니다.
+
+> 여러 줄을 한꺼번에 붙여넣어도 되지만, 처음이시라면 **한 줄씩** 붙여넣고
+> 각각 끝나는 걸 확인하면서 진행하는 편이 문제를 찾기 쉽습니다.
+
+---
+
+### 4-1. 저장소 받기
 
 ```bash
 sudo apt update && sudo apt install -y git
-git clone https://github.com/sulhwawall-pixel/minecraft.git
-cd minecraft
-
-# VM 준비 (Java 17, 스왑, systemd, 자동 백업)
-sudo bash scripts/01-setup-vm.sh
-
-# 서버 팩 설치 — zip 구하는 법은 아래 문서 참고
-sudo bash scripts/02-install-modpack.sh "<서버팩 직링크 또는 경로>"
 ```
 
-서버 팩 zip을 구하는 방법은 [4단계 문서](../04-install-server.md#4-2-서버-팩-zip-구하기)에
-그대로 나와 있습니다.
+```bash
+git clone https://github.com/sulhwawall-pixel/minecraft.git
+```
+
+```bash
+cd minecraft
+```
+
+### 4-2. VM 준비
+
+```bash
+sudo bash scripts/01-setup-vm.sh
+```
+
+Java 17, 스왑, 방화벽, systemd, 자동 백업을 설치합니다. 2~3분 걸립니다.
+
+RAM 8GB라서 중간에 **"RAM 7900MB — 돌아가지만 여유가 많지 않습니다"** 경고가
+뜨는데 **정상입니다.** 그냥 진행됩니다.
+
+### 4-3. 서버 팩 zip 링크 구하기 — 여기는 PC 브라우저에서 합니다
+
+서버에 CurseForge 페이지 주소를 그대로 넣으면 **403 에러**가 납니다.
+파일이 실제로 있는 CDN 주소가 따로 필요합니다.
+
+1. PC 브라우저에서 파일 목록 열기
+   https://www.curseforge.com/minecraft/modpacks/society-sunlit-valley/files/all
+2. 이름에 **`SERVER-PACK`** 이 들어간 최신 파일을 클릭
+   (예: `SERVER-PACK-Society-Sunlit-Valley-4.1.1.zip`)
+   → **`SERVER PACK`이 아닌 파일은 클라이언트용이라 안 됩니다**
+3. **Download** 버튼 클릭 → 다운로드가 시작됩니다
+4. 브라우저에서 **`Ctrl+J`** (다운로드 목록 열기)
+5. 방금 받은 항목에 **마우스 우클릭 → "다운로드 링크 복사"**
+
+복사된 주소가 이렇게 생겼으면 정답입니다:
+
+```
+https://mediafilez.forgecdn.net/files/7650/600/SERVER-PACK-Society-Sunlit-Valley-4.1.1.zip
+```
+
+> ⚠️ 주소에 `curseforge.com` 이 들어 있으면 **잘못 복사한 것**입니다.
+> 반드시 `mediafilez.forgecdn.net` 으로 시작해야 합니다.
+
+### 4-4. 서버 팩 설치
+
+SSH 창으로 돌아와서, 아래 명령의 **따옴표 안에 방금 복사한 주소를 붙여넣으세요.**
+
+```bash
+sudo bash scripts/02-install-modpack.sh "여기에_복사한_주소_붙여넣기"
+```
+
+실제로는 이런 모양이 됩니다:
+
+```bash
+sudo bash scripts/02-install-modpack.sh "https://mediafilez.forgecdn.net/files/7650/600/SERVER-PACK-Society-Sunlit-Valley-4.1.1.zip"
+```
+
+**따옴표 `"` 를 빠뜨리지 마세요.** 주소에 특수문자가 들어 있으면 따옴표 없이는 깨집니다.
+
+다운로드 + 압축 해제 + Forge 설치까지 **5~10분** 걸립니다.
+
+> 마지막에 `힙 크기를 5500M 로 정했습니다` 같은 줄이 나오면 성공입니다.
+
+### 4-5. 잘 안 될 때
+
+| 증상 | 해결 |
+|---|---|
+| `zip 파일이 아닙니다` | CurseForge 웹 주소를 넣은 것. `mediafilez.forgecdn.net` 링크가 맞는지 확인 |
+| `다운로드 실패` | 링크가 만료됨. 4-3을 다시 해서 새 링크를 받으세요 |
+| `mods 폴더 없음` | 클라이언트 팩을 받은 것. 이름에 `SERVER-PACK` 이 있는 파일이어야 합니다 |
+| 붙여넣기가 안 됨 | 터미널 창에서 **마우스 우클릭** |
 
 ---
 
