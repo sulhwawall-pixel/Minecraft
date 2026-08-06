@@ -82,6 +82,7 @@ AMI를 Arm으로 고르면 목록에서 사라지니 **x86 이미지**를 쓰세
 
 | 단계 | 문서 |
 |---|---|
+| 0 | [**AWS 무료 정책 정리**](docs/aws/00-free-tier-policy.md) — 공식 문서 기준, 먼저 읽기 |
 | 1 | [AWS 계정 · EC2 인스턴스 · 서버 설치](docs/aws/01-setup.md) |
 | 2 | [자동으로 켜고 끄기 (PC 없이)](docs/aws/02-auto-onoff.md) |
 
