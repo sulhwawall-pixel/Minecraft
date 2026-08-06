@@ -38,14 +38,17 @@ echo "    RAM      : ${TOTAL_MB} MB"
 if [[ "$ARCH" != "aarch64" && "$ARCH" != "x86_64" ]]; then
   die "지원하지 않는 아키텍처입니다: $ARCH"
 fi
-if (( TOTAL_MB < 10000 )); then
-  # 선릿밸리는 힙만 6~7GB를 요구하고, 대형 모드팩은 힙 바깥에서만 1.5~2.5GB를 더 쓴다.
-  # 여기에 OS 몫까지 더하면 실질적으로 10GB 미만에서는 안정적으로 돌지 않는다.
-  warn "RAM이 ${TOTAL_MB}MB 입니다. 선릿밸리는 12GB를 권장합니다."
-  warn "(힙 6~7GB + JVM 오프힙 1.5~2.5GB + OS 1GB)"
-  warn "OCI 무료 티어 최대치인 2 OCPU / 12GB 로 다시 만드는 것을 권합니다."
+if (( TOTAL_MB < 6000 )); then
+  # 힙 6~7GB + JVM 오프힙 1.5~2.5GB + OS 몫을 감안하면 6GB 미만에서는 서버가 뜨더라도
+  # 금방 메모리 부족으로 죽는다.
+  warn "RAM이 ${TOTAL_MB}MB 뿐입니다. 선릿밸리는 이 사양에서 정상 동작하지 않습니다."
+  warn "8GB 이상 인스턴스로 다시 만드시길 강력히 권합니다."
+  warn "  AWS 무료 플랜: m7i-flex.large (8GB)  /  OCI: 2 OCPU · 12GB"
   read -rp "    그래도 계속할까요? [y/N] " ans
   [[ "${ans,,}" == "y" ]] || exit 1
+elif (( TOTAL_MB < 10000 )); then
+  warn "RAM ${TOTAL_MB}MB — 돌아가지만 여유가 많지 않습니다. (12GB 권장)"
+  warn "설치 스크립트가 시야거리와 최대 인원을 낮춰서 맞춰줍니다."
 fi
 if (( CPUS < 2 )); then
   warn "CPU가 ${CPUS}코어입니다. 대형 모드팩에는 최소 2코어가 필요합니다."

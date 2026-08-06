@@ -82,28 +82,37 @@ cp -a "$ROOT/." "$SERVER_DIR/"
 log "EULA에 동의 표시를 합니다. (https://aka.ms/MinecraftEULA)"
 echo "eula=true" > "$SERVER_DIR/eula.txt"
 
-if [[ ! -f "$SERVER_DIR/server.properties" ]]; then
-  log "server.properties 를 2 OCPU 환경에 맞춰 생성합니다."
-  cp "$(dirname "${BASH_SOURCE[0]}")/../config/server.properties" "$SERVER_DIR/server.properties"
+TOTAL_MB="$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)"
+
+# RAM에 따라 부하 설정을 달리 잡는다. 2코어 서버에서 청크 생성이 가장 무겁기 때문에
+# 시야거리를 줄이는 것이 체감 효과가 제일 크다.
+if (( TOTAL_MB >= 10000 )); then
+  VIEW=8; SIM=6; MAXP=6      # OCI 12GB 급
 else
-  log "기존 server.properties 를 저사양 서버에 맞게 조정합니다."
-  tune() {  # key value — 있으면 교체, 없으면 추가
-    local k="$1" v="$2"
-    if grep -q "^${k}=" "$SERVER_DIR/server.properties"; then
-      sed -i "s|^${k}=.*|${k}=${v}|" "$SERVER_DIR/server.properties"
-    else
-      echo "${k}=${v}" >> "$SERVER_DIR/server.properties"
-    fi
-  }
-  # 2코어 ARM에서 청크 생성이 가장 무겁다. 시야거리를 줄이는 게 체감 효과가 제일 크다.
-  tune view-distance 8
-  tune simulation-distance 6
-  tune max-players 6
-  tune network-compression-threshold 512
-  tune sync-chunk-writes false
-  tune spawn-protection 0
-  tune motd "Sunlit Valley - OCI"
+  VIEW=6; SIM=4; MAXP=4      # AWS m7i-flex.large 8GB 급
 fi
+
+if [[ ! -f "$SERVER_DIR/server.properties" ]]; then
+  log "server.properties 를 생성합니다."
+  cp "$(dirname "${BASH_SOURCE[0]}")/../config/server.properties" "$SERVER_DIR/server.properties"
+fi
+
+log "server.properties 를 이 서버 사양에 맞게 조정합니다. (시야거리 ${VIEW}, 최대 ${MAXP}명)"
+tune() {  # key value — 있으면 교체, 없으면 추가
+  local k="$1" v="$2"
+  if grep -q "^${k}=" "$SERVER_DIR/server.properties"; then
+    sed -i "s|^${k}=.*|${k}=${v}|" "$SERVER_DIR/server.properties"
+  else
+    echo "${k}=${v}" >> "$SERVER_DIR/server.properties"
+  fi
+}
+tune view-distance "$VIEW"
+tune simulation-distance "$SIM"
+tune max-players "$MAXP"
+tune network-compression-threshold 512
+tune sync-chunk-writes false
+tune spawn-protection 0
+tune motd "Sunlit Valley"
 
 # ------------------------------------------------------- 5. Forge 설치 여부 확인
 cd "$SERVER_DIR"
@@ -122,17 +131,23 @@ if [[ -z "$ARGS_FILE" ]]; then
 fi
 
 # ------------------------------------------------------------ 6. 시작 스크립트
-# 힙 크기: 전체 RAM에서 OS + JVM 오프힙(메타스페이스/다이렉트 버퍼) 몫으로 3.5GB를 남긴다.
+# 힙 크기: 전체 RAM에서 OS + JVM 오프힙(메타스페이스/다이렉트 버퍼) 몫을 남긴다.
 # 대형 모드팩은 오프힙만 1.5~2.5GB를 쓰기 때문에 이걸 안 빼면 OOM Kill이 난다.
-TOTAL_MB="$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)"
-HEAP_MB=$(( TOTAL_MB - 3584 ))
+# 여유분을 고정값으로 두면 8GB 서버에서 힙이 너무 작아지므로 사양별로 다르게 잡는다.
+# 경계값은 실제 보고되는 값 기준이다. "12GB" 인스턴스는 펌웨어 예약분 때문에
+# MemTotal 이 11,800MB 안팎으로 잡히므로 12000 이 아니라 10000 으로 나눈다.
+if   (( TOTAL_MB >= 10000 )); then RESERVE=3584   # OCI 12GB 급
+elif (( TOTAL_MB >= 7000  )); then RESERVE=2400   # AWS 8GB 급
+else                               RESERVE=2048
+fi
+HEAP_MB=$(( TOTAL_MB - RESERVE ))
 (( HEAP_MB > 10240 )) && HEAP_MB=10240
-(( HEAP_MB < 4096 ))  && HEAP_MB=4096
+(( HEAP_MB < 3072 ))  && HEAP_MB=3072
 HEAP="${HEAP_MB}M"
 log "힙 크기를 ${HEAP} 로 정했습니다. (전체 RAM ${TOTAL_MB}MB)"
-if (( HEAP_MB <= 4096 && TOTAL_MB < 10000 )); then
-  warn "이 RAM으로는 힙이 권장치(6~7GB)에 못 미칩니다. 접속자가 늘면 불안정할 수 있습니다."
-  warn "시야거리를 5 이하로 낮추고 인원을 2~3명으로 제한해서 쓰세요."
+if (( HEAP_MB < 6144 )); then
+  warn "힙이 권장치(6~7GB)보다 작습니다. 위에서 시야거리와 인원을 낮춰뒀습니다."
+  warn "렉이 심하면 /etc/... 대신 server.properties 의 view-distance 를 5로 더 낮추세요."
 fi
 
 # Aikar's flags — 12GB 미만 힙용 파라미터 세트

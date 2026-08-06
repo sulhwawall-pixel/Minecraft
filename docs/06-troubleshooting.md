@@ -59,7 +59,7 @@ sudo journalctl -u minecraft --since "1 hour ago" | tail -50
 
 ```bash
 sudo nano /opt/minecraft/server/start.sh
-# HEAP="${MC_HEAP:-8704M}"  →  7680M 정도로 낮춤
+# HEAP="${MC_HEAP:-8216M}"  →  7680M 정도로 낮춤
 sudo mcctl restart
 ```
 
