@@ -203,7 +203,7 @@ sudo apt update && sudo apt install -y git
 ```
 
 ```bash
-git clone https://github.com/sulhwawall-pixel/minecraft.git
+git clone -b claude/minecraft-sunset-valley-oci-9pwbki https://github.com/sulhwawall-pixel/minecraft.git
 ```
 
 ```bash

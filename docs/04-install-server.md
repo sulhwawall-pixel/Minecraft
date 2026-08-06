@@ -8,7 +8,7 @@ SSH로 서버에 접속한 상태에서 진행합니다.
 
 ```bash
 sudo apt update && sudo apt install -y git
-git clone https://github.com/sulhwawall-pixel/minecraft.git
+git clone -b claude/minecraft-sunset-valley-oci-9pwbki https://github.com/sulhwawall-pixel/minecraft.git
 cd minecraft
 sudo bash scripts/01-setup-vm.sh
 ```

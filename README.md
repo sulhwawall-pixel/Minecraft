@@ -98,7 +98,7 @@ SSH로 서버에 접속한 뒤:
 ```bash
 # 1. 이 저장소 받기
 sudo apt update && sudo apt install -y git
-git clone https://github.com/sulhwawall-pixel/minecraft.git
+git clone -b claude/minecraft-sunset-valley-oci-9pwbki https://github.com/sulhwawall-pixel/minecraft.git
 cd minecraft
 
 # 2. VM 준비 (Java, 방화벽, 스왑, systemd)
