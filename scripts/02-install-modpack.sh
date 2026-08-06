@@ -127,19 +127,46 @@ for f in run.sh startserver.sh start-server.sh ServerStart.sh start.sh; do
 done
 
 # Forge 설치 프로그램을 받아 서버를 구성한다.
-install_forge() {   # $1 = 마인크래프트 버전, $2 = Forge 버전
-  local mc="$1" fg="$2"
-  local url="https://maven.minecraftforge.net/net/minecraftforge/forge/${mc}-${fg}/forge-${mc}-${fg}-installer.jar"
-  log "Forge ${mc}-${fg} 설치 프로그램을 내려받습니다."
-  curl -fL --progress-bar -o forge-installer.jar "$url" \
-    || die "Forge 설치 프로그램을 받지 못했습니다. 주소: $url"
-  chown "$MC_USER:$MC_USER" forge-installer.jar
+#
+# 설치 프로그램은 반드시 절대 경로로 다루고 root 로 실행한다. 상대 경로와
+# 다른 계정(sudo -u)을 섞으면 작업 디렉터리나 권한 때문에 "Unable to access
+# jarfile" 이 나는데, 그 메시지만으로는 원인을 가릴 수 없기 때문이다.
+# 설치가 만들어낸 파일의 소유권은 스크립트 마지막의 chown -R 이 정리한다.
+run_forge_installer() {   # $1 = 설치 프로그램 절대 경로
+  local jar="$1"
   log "Forge를 설치합니다. 라이브러리를 여러 개 받으므로 3~10분 걸립니다."
   # headless 를 명시하지 않으면 화면 없는 서버에서 설치 프로그램이 창을 띄우려다 멈춘다.
-  sudo -u "$MC_USER" java -Djava.awt.headless=true -jar forge-installer.jar --installServer \
-    || die "Forge 설치 실패. 위 출력을 확인하세요."
-  rm -f forge-installer.jar forge-installer.jar.log
+  ( cd "$SERVER_DIR" && java -Djava.awt.headless=true -jar "$jar" --installServer ) || {
+    warn "설치 프로그램 파일 상태:"
+    ls -la "$jar" 2>&1 | sed 's/^/      /'
+    file "$jar" 2>&1 | sed 's/^/      /'
+    die "Forge 설치 실패. 위 출력을 확인하세요."
+  }
   log "Forge 설치 완료."
+}
+
+fetch_forge() {   # $1 = 마인크래프트 버전, $2 = Forge 버전
+  local mc="$1" fg="$2"
+  local url="https://maven.minecraftforge.net/net/minecraftforge/forge/${mc}-${fg}/forge-${mc}-${fg}-installer.jar"
+  local jar="$DL_DIR/forge-${mc}-${fg}-installer.jar"
+
+  log "Forge ${mc}-${fg} 설치 프로그램을 내려받습니다."
+  echo "      $url"
+  curl -fL --progress-bar -o "$jar" "$url" \
+    || die "Forge 설치 프로그램을 받지 못했습니다.
+     주소: $url
+     variables.txt 의 MODLOADER_VERSION(${fg}) 이 실제 존재하는 버전인지 확인하세요."
+
+  # 받긴 받았는데 내용이 jar 가 아닌 경우(오류 페이지 등)를 여기서 걸러낸다.
+  # jar 는 zip 이므로 목록을 읽을 수 있는지로 판정한다. file 의 설명 문구에
+  # 의존하면 환경에 따라 표현이 달라져 멀쩡한 파일을 거부할 수 있다.
+  [[ -s "$jar" ]] || die "받은 파일이 비어 있습니다: $jar"
+  unzip -tq "$jar" >/dev/null 2>&1 \
+    || die "받은 파일이 정상적인 jar 가 아닙니다: $(file -b "$jar")
+     Forge 버전 ${fg} 이 존재하지 않아 오류 페이지를 받았을 수 있습니다."
+
+  log "다운로드 완료: $(du -h "$jar" | cut -f1)"
+  run_forge_installer "$jar"
 }
 
 if [[ -d libraries/net/minecraftforge ]]; then
@@ -147,13 +174,9 @@ if [[ -d libraries/net/minecraftforge ]]; then
 
 elif compgen -G "forge-*-installer.jar" >/dev/null; then
   # 팩에 설치 프로그램이 동봉된 경우
-  INSTALLER="$(ls forge-*-installer.jar | head -1)"
-  log "동봉된 설치 프로그램을 사용합니다: $INSTALLER"
-  chown "$MC_USER:$MC_USER" "$INSTALLER"
-  sudo -u "$MC_USER" java -Djava.awt.headless=true -jar "$INSTALLER" --installServer \
-    || die "Forge 설치 실패. 위 출력을 확인하세요."
-  rm -f "$INSTALLER" "${INSTALLER}.log"
-  log "Forge 설치 완료."
+  INSTALLER="$SERVER_DIR/$(ls forge-*-installer.jar | head -1)"
+  log "동봉된 설치 프로그램을 사용합니다: $(basename "$INSTALLER")"
+  run_forge_installer "$INSTALLER"
 
 elif [[ -f variables.txt ]]; then
   # ServerPackCreator 로 만들어진 서버 팩. Forge 를 담지 않고 버전만 적어두고,
@@ -166,7 +189,7 @@ elif [[ -f variables.txt ]]; then
   log "variables.txt 확인: 마인크래프트 ${MC_VER:-?}, ${LOADER:-?} ${LOADER_VER:-?}"
 
   if [[ "${LOADER,,}" == "forge" && -n "$MC_VER" && -n "$LOADER_VER" ]]; then
-    install_forge "$MC_VER" "$LOADER_VER"
+    fetch_forge "$MC_VER" "$LOADER_VER"
   else
     die "지원하지 않는 모드로더입니다: ${LOADER:-(없음)}. 이 스크립트는 Forge 전용입니다."
   fi
