@@ -53,11 +53,21 @@ CurseForge 페이지 주소를 서버에 그대로 넣으면 **403 에러**가 �
    **우클릭 → "다운로드 링크 복사"**
 4. `https://mediafilez.forgecdn.net/files/7650/600/SERVER-PACK-...zip` 형태면 정답입니다
 
-이 링크를 그대로 넘기면 됩니다:
+설치는 10분 넘게 걸리므로 **반드시 `tmux` 안에서 실행하세요.**
+SSH가 중간에 끊기면 설치가 통째로 죽습니다.
+
+```bash
+tmux new -s install
+```
+
+tmux 안에서:
 
 ```bash
 sudo bash scripts/02-install-modpack.sh "https://mediafilez.forgecdn.net/files/.../SERVER-PACK-....zip"
 ```
+
+연결이 끊겼다면 다시 접속해서 `tmux attach -t install` 로 이어보면 됩니다.
+tmux에서 나갈 때는 `Ctrl+B` 를 누른 뒤 `D` (Ctrl+C 는 작업을 죽입니다).
 
 > 링크에 `curseforge.com` 이 들어 있으면 잘못 복사한 것입니다. 반드시
 > `mediafilez.forgecdn.net` 이어야 합니다.

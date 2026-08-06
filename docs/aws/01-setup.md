@@ -244,9 +244,22 @@ https://mediafilez.forgecdn.net/files/7650/600/SERVER-PACK-Society-Sunlit-Valley
 > ⚠️ 주소에 `curseforge.com` 이 들어 있으면 **잘못 복사한 것**입니다.
 > 반드시 `mediafilez.forgecdn.net` 으로 시작해야 합니다.
 
-### 4-4. 서버 팩 설치
+### 4-4. 서버 팩 설치 — 반드시 `tmux` 안에서 하세요
 
-SSH 창으로 돌아와서, 아래 명령의 **따옴표 안에 방금 복사한 주소를 붙여넣으세요.**
+설치는 10분 넘게 걸립니다. 그동안 **SSH 연결이 한 번이라도 끊기면 설치가
+통째로 죽습니다.** (화면은 멈춘 것처럼 보이는데 실제로는 프로세스가 사라진 상태)
+
+`tmux` 안에서 돌리면 **연결이 끊겨도 서버 쪽에서 계속 진행**되고,
+다시 접속해서 이어보면 됩니다.
+
+먼저 tmux 세션을 만듭니다:
+
+```bash
+tmux new -s install
+```
+
+화면 아래에 초록색 줄이 생기면 tmux 안에 들어온 겁니다.
+**여기서** 설치 명령을 실행하세요. 따옴표 안에 4-3에서 복사한 주소를 붙여넣습니다:
 
 ```bash
 sudo bash scripts/02-install-modpack.sh "여기에_복사한_주소_붙여넣기"
@@ -264,7 +277,49 @@ sudo bash scripts/02-install-modpack.sh "https://mediafilez.forgecdn.net/files/7
 
 > 마지막에 `힙 크기를 5500M 로 정했습니다` 같은 줄이 나오면 성공입니다.
 
-### 4-5. 잘 안 될 때
+### 4-5. 연결이 끊겼다면
+
+당황하지 마세요. tmux 안에서 돌렸다면 **설치는 서버에서 계속 진행 중**입니다.
+
+다시 SSH로 접속한 뒤:
+
+```bash
+tmux attach -t install
+```
+
+아까 그 화면이 그대로 나옵니다. 진행이 끝나 있을 수도 있습니다.
+
+### tmux 기본 조작
+
+| 하고 싶은 것 | 방법 |
+|---|---|
+| 나가되 계속 돌리기 | **`Ctrl+B`** 누른 뒤 **`D`** |
+| 다시 들어가기 | `tmux attach -t install` |
+| 세션 목록 보기 | `tmux ls` |
+
+> **`Ctrl+C` 는 실행 중인 작업을 죽입니다.** 나갈 때는 반드시 `Ctrl+B` → `D`.
+
+### 4-6. 진행이 멈춘 것 같을 때
+
+진짜 멈춘 건지 확인하려면 **새 SSH 창**에서:
+
+```bash
+ps aux | grep -c "[j]ava"
+```
+
+- **1 이상** → Forge 설치가 도는 중입니다. 기다리세요
+- **0** → 프로세스가 죽었습니다. 대부분 SSH가 끊긴 경우이니
+  위의 tmux 방식으로 다시 실행하세요
+
+파일이 실제로 늘고 있는지 보는 방법:
+
+```bash
+sudo du -sh /opt/minecraft/server/libraries
+```
+
+30초 간격으로 두 번 쳐서 크기가 커지면 정상입니다.
+
+### 4-7. 그 밖에 잘 안 될 때
 
 | 증상 | 해결 |
 |---|---|
@@ -272,6 +327,17 @@ sudo bash scripts/02-install-modpack.sh "https://mediafilez.forgecdn.net/files/7
 | `다운로드 실패` | 링크가 만료됨. 4-3을 다시 해서 새 링크를 받으세요 |
 | `mods 폴더 없음` | 클라이언트 팩을 받은 것. 이름에 `SERVER-PACK` 이 있는 파일이어야 합니다 |
 | 붙여넣기가 안 됨 | 터미널 창에서 **마우스 우클릭** |
+| 자꾸 연결이 끊김 | 아래 "SSH 끊김 방지" 참고 |
+
+### SSH 끊김 방지 (선택)
+
+PC에서 SSH가 자주 끊긴다면, 접속할 때 keepalive 옵션을 붙이세요:
+
+```powershell
+ssh -o ServerAliveInterval=60 -i .\minecraft.pem ubuntu@퍼블릭IP
+```
+
+60초마다 신호를 보내서 공유기나 방화벽이 유휴 연결로 판단해 끊는 걸 막아줍니다.
 
 ---
 
