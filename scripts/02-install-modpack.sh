@@ -118,10 +118,14 @@ tune motd "Sunlit Valley"
 cd "$SERVER_DIR"
 if compgen -G "forge-*-installer.jar" >/dev/null && [[ ! -d "libraries/net/minecraftforge" ]]; then
   INSTALLER="$(ls forge-*-installer.jar | head -1)"
-  log "Forge를 설치합니다: $INSTALLER (3~5분 걸립니다)"
-  sudo -u "$MC_USER" java -jar "$INSTALLER" --installServer >/dev/null \
-    || die "Forge 설치 실패. $SERVER_DIR/*.log 를 확인하세요."
+  log "Forge를 설치합니다: $INSTALLER"
+  log "라이브러리를 수십 개 내려받습니다. 3~10분 걸리고, 아래에 진행 상황이 그대로 표시됩니다."
+  # 출력을 버리면 멈춘 건지 도는 건지 알 수 없다. 화면에 그대로 흘려보낸다.
+  # headless 를 명시하지 않으면 GUI 없는 서버에서 설치 프로그램이 창을 띄우려다 멈출 수 있다.
+  sudo -u "$MC_USER" java -Djava.awt.headless=true -jar "$INSTALLER" --installServer \
+    || die "Forge 설치 실패. 위 출력과 $SERVER_DIR/installer.log 를 확인하세요."
   rm -f "$INSTALLER" "${INSTALLER}.log"
+  log "Forge 설치 완료."
 fi
 
 # Forge 1.20.1 은 unix_args.txt 방식으로 실행한다. 이게 있어야 정상 설치된 것.
@@ -199,6 +203,7 @@ for f in run.sh startserver.sh start-server.sh ServerStart.sh; do
   [[ -f "$SERVER_DIR/$f" ]] && mv "$SERVER_DIR/$f" "$SERVER_DIR/${f}.orig"
 done
 
+log "파일 소유권을 정리합니다. (파일이 많아 1~2분 걸릴 수 있습니다)"
 chown -R "$MC_USER:$MC_USER" "$MC_HOME"
 
 # ------------------------------------------------------------------- 마무리
