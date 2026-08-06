@@ -1,0 +1,8 @@
+[Unit]
+Description=Minecraft world backup
+
+[Service]
+Type=oneshot
+User=minecraft
+Group=minecraft
+ExecStart=/opt/minecraft/backup.sh

@@ -1,0 +1,41 @@
+[Unit]
+Description=Minecraft Server (Society: Sunlit Valley)
+After=network-online.target
+Wants=network-online.target
+# 크래시 루프에 빠지면 10분에 3번까지만 재시도한다.
+StartLimitIntervalSec=600
+StartLimitBurst=3
+
+[Service]
+Type=forking
+User=minecraft
+Group=minecraft
+WorkingDirectory=/opt/minecraft/server
+
+# tmux 안에서 띄운다. 그래야 `mcctl console` 로 살아있는 서버 콘솔에 붙어
+# /op, /whitelist 같은 명령을 직접 칠 수 있다.
+ExecStart=/usr/bin/tmux -L minecraft new-session -d -s mc /opt/minecraft/server/start.sh
+
+# 정지할 때는 반드시 콘솔에 stop 을 보내야 한다. 그냥 죽이면 월드가 깨진다.
+# 각 줄의 '-' 는 "실패해도 다음 줄을 계속 실행" 이라는 뜻. 서버가 이미 죽어 있어도
+# 나머지 정리 단계가 건너뛰어지지 않게 해준다.
+ExecStop=-/usr/bin/tmux -L minecraft send-keys -t mc "say 서버가 10초 후 종료됩니다." Enter
+ExecStop=-/bin/sleep 10
+ExecStop=-/usr/bin/tmux -L minecraft send-keys -t mc "save-all flush" Enter
+ExecStop=-/bin/sleep 10
+ExecStop=-/usr/bin/tmux -L minecraft send-keys -t mc "stop" Enter
+# 월드 저장이 끝나 세션이 사라질 때까지 최대 180초 기다린다.
+ExecStop=-/bin/bash -c 'for i in $(seq 1 180); do /usr/bin/tmux -L minecraft has-session -t mc 2>/dev/null || exit 0; sleep 1; done'
+
+# 위 ExecStop 이 전부 끝난 뒤에야 systemd 가 남은 프로세스를 정리하도록 넉넉히 잡는다.
+TimeoutStopSec=300
+KillMode=mixed
+
+# tmux 세션이 사라지면(=서버가 죽으면) 자동으로 다시 띄운다.
+Restart=always
+RestartSec=20s
+
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

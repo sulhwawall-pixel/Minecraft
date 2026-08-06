@@ -1,0 +1,11 @@
+[Unit]
+Description=Minecraft world backup (매일 새벽 4시)
+
+[Timer]
+OnCalendar=*-*-* 04:00:00
+# 인스턴스가 꺼져 있었으면 켜진 직후에 밀린 백업을 실행한다.
+Persistent=true
+RandomizedDelaySec=10m
+
+[Install]
+WantedBy=timers.target
