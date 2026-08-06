@@ -113,11 +113,23 @@ Resources:
 
   # Required to expose the function URL without auth.
   # Access control is the SECRET check inside the Lambda code.
+  #
+  # Both permissions are needed. Since October 2025, a function URL also
+  # requires lambda:InvokeFunction; granting only lambda:InvokeFunctionUrl
+  # makes every request fail with "Forbidden" before it reaches the code.
   StarterUrlPermission:
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !GetAtt StarterFunction.Arn
       Action: lambda:InvokeFunctionUrl
+      Principal: '*'
+      FunctionUrlAuthType: NONE
+
+  StarterInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt StarterFunction.Arn
+      Action: lambda:InvokeFunction
       Principal: '*'
       FunctionUrlAuthType: NONE
 
