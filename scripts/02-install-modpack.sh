@@ -114,18 +114,67 @@ tune sync-chunk-writes false
 tune spawn-protection 0
 tune motd "Sunlit Valley"
 
-# ------------------------------------------------------- 5. Forge 설치 여부 확인
+# ------------------------------------------------------- 5. Forge 확보
 cd "$SERVER_DIR"
-if compgen -G "forge-*-installer.jar" >/dev/null && [[ ! -d "libraries/net/minecraftforge" ]]; then
+
+# 서버 팩이 자체 실행 스크립트를 들고 오는 경우가 많다. 우리 start.sh 를 쓰기 전에
+# 원본을 반드시 보존한다. (start.sh 를 목록에서 빠뜨려 원본을 날린 적이 있다)
+for f in run.sh startserver.sh start-server.sh ServerStart.sh start.sh; do
+  if [[ -f "$f" && ! -e "${f}.orig" ]]; then
+    mv "$f" "${f}.orig"
+    log "서버 팩의 ${f} 를 ${f}.orig 로 보존했습니다."
+  fi
+done
+
+# Forge 설치 프로그램을 받아 서버를 구성한다.
+install_forge() {   # $1 = 마인크래프트 버전, $2 = Forge 버전
+  local mc="$1" fg="$2"
+  local url="https://maven.minecraftforge.net/net/minecraftforge/forge/${mc}-${fg}/forge-${mc}-${fg}-installer.jar"
+  log "Forge ${mc}-${fg} 설치 프로그램을 내려받습니다."
+  curl -fL --progress-bar -o forge-installer.jar "$url" \
+    || die "Forge 설치 프로그램을 받지 못했습니다. 주소: $url"
+  chown "$MC_USER:$MC_USER" forge-installer.jar
+  log "Forge를 설치합니다. 라이브러리를 여러 개 받으므로 3~10분 걸립니다."
+  # headless 를 명시하지 않으면 화면 없는 서버에서 설치 프로그램이 창을 띄우려다 멈춘다.
+  sudo -u "$MC_USER" java -Djava.awt.headless=true -jar forge-installer.jar --installServer \
+    || die "Forge 설치 실패. 위 출력을 확인하세요."
+  rm -f forge-installer.jar forge-installer.jar.log
+  log "Forge 설치 완료."
+}
+
+if [[ -d libraries/net/minecraftforge ]]; then
+  log "Forge가 이미 설치되어 있습니다."
+
+elif compgen -G "forge-*-installer.jar" >/dev/null; then
+  # 팩에 설치 프로그램이 동봉된 경우
   INSTALLER="$(ls forge-*-installer.jar | head -1)"
-  log "Forge를 설치합니다: $INSTALLER"
-  log "라이브러리를 수십 개 내려받습니다. 3~10분 걸리고, 아래에 진행 상황이 그대로 표시됩니다."
-  # 출력을 버리면 멈춘 건지 도는 건지 알 수 없다. 화면에 그대로 흘려보낸다.
-  # headless 를 명시하지 않으면 GUI 없는 서버에서 설치 프로그램이 창을 띄우려다 멈출 수 있다.
+  log "동봉된 설치 프로그램을 사용합니다: $INSTALLER"
+  chown "$MC_USER:$MC_USER" "$INSTALLER"
   sudo -u "$MC_USER" java -Djava.awt.headless=true -jar "$INSTALLER" --installServer \
-    || die "Forge 설치 실패. 위 출력과 $SERVER_DIR/installer.log 를 확인하세요."
+    || die "Forge 설치 실패. 위 출력을 확인하세요."
   rm -f "$INSTALLER" "${INSTALLER}.log"
   log "Forge 설치 완료."
+
+elif [[ -f variables.txt ]]; then
+  # ServerPackCreator 로 만들어진 서버 팩. Forge 를 담지 않고 버전만 적어두고,
+  # 팩의 실행 스크립트가 최초 구동 때 받아오는 구조다. 여기서 미리 설치해 둔다.
+  # 윈도우 줄바꿈(CR)이 섞여 있는 경우가 많아 먼저 제거한다.
+  getvar() { sed -n "s/\r\$//; s/^$1=//p" variables.txt | tr -d '"' | head -1; }
+  MC_VER="$(getvar MINECRAFT_VERSION)"
+  LOADER="$(getvar MODLOADER)"
+  LOADER_VER="$(getvar MODLOADER_VERSION)"
+  log "variables.txt 확인: 마인크래프트 ${MC_VER:-?}, ${LOADER:-?} ${LOADER_VER:-?}"
+
+  if [[ "${LOADER,,}" == "forge" && -n "$MC_VER" && -n "$LOADER_VER" ]]; then
+    install_forge "$MC_VER" "$LOADER_VER"
+  else
+    die "지원하지 않는 모드로더입니다: ${LOADER:-(없음)}. 이 스크립트는 Forge 전용입니다."
+  fi
+
+else
+  die "Forge를 어떻게 설치해야 할지 판단하지 못했습니다.
+     서버 폴더에 설치 프로그램도, variables.txt 도 없습니다.
+     $SERVER_DIR 의 내용을 확인해 주세요."
 fi
 
 # Forge 1.20.1 은 unix_args.txt 방식으로 실행한다. 이게 있어야 정상 설치된 것.
@@ -221,10 +270,7 @@ exec java "\${JVM_FLAGS[@]}" -jar "\$JAR" nogui
 EOF
 chmod +x "$SERVER_DIR/start.sh"
 
-# 서버 팩이 들고 온 자체 실행 스크립트는 힙 설정이 우리와 충돌하므로 비켜둔다.
-for f in run.sh startserver.sh start-server.sh ServerStart.sh; do
-  [[ -f "$SERVER_DIR/$f" ]] && mv "$SERVER_DIR/$f" "$SERVER_DIR/${f}.orig"
-done
+# 팩의 실행 스크립트는 위 5단계에서 이미 .orig 로 보존해 두었다.
 
 log "파일 소유권을 정리합니다. (파일이 많아 1~2분 걸릴 수 있습니다)"
 chown -R "$MC_USER:$MC_USER" "$MC_HOME"
