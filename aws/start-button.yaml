@@ -125,13 +125,15 @@ Resources:
       Principal: '*'
       FunctionUrlAuthType: NONE
 
+  # No FunctionUrlAuthType here. That property is only valid alongside
+  # lambda:InvokeFunctionUrl; pairing it with lambda:InvokeFunction is an
+  # invalid combination and the stack rolls back.
   StarterInvokePermission:
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !GetAtt StarterFunction.Arn
       Action: lambda:InvokeFunction
       Principal: '*'
-      FunctionUrlAuthType: NONE
 
 Outputs:
   BaseUrl:
