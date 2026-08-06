@@ -66,6 +66,9 @@ sudo bash scripts/02-install-modpack.sh "https://mediafilez.forgecdn.net/files/.
 
 이미 PC에 받아뒀다면 SSH 키를 써서 올리면 됩니다.
 
+> 아래 `ssh-key-XXXX.key` 는 **OCI**가 만들어주는 키 파일 이름입니다.
+> **AWS**라면 본인이 정한 이름의 `.pem` 파일(예: `minecraft-key.pem`)로 바꿔 쓰세요.
+
 **윈도우 PowerShell:**
 ```powershell
 scp -i .\ssh-key-XXXX.key ".\SERVER-PACK-Society-Sunlit-Valley-4.1.1.zip" ubuntu@공인IP:/tmp/

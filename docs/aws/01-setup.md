@@ -78,9 +78,17 @@ AWS는 OCI와 달리 **리전을 나중에 바꿔도 됩니다.** 부담 없이 
 **2~4명이면 충분히 돌아갑니다.** 다만 OCI 12GB보다는 빠듯해서, Create 대형
 공장을 여러 개 돌리면 렉이 느껴질 수 있습니다.
 
-### 키 페어
-- **새 키 페어 생성** → 유형 `RSA`, 형식 `.pem`
-- 다운로드된 `.pem` 파일을 잘 보관하세요. **다시 받을 수 없습니다.**
+### 키 페어 — 서버에 들어가는 열쇠입니다
+
+1. **새 키 페어 생성** 클릭
+2. **키 페어 이름**: `minecraft-key` ← 이 이름을 그대로 쓰시면 아래 명령을
+   복사해서 붙여넣기만 하면 됩니다
+3. 키 페어 유형: **RSA**
+4. 프라이빗 키 파일 형식: **`.pem`**
+5. **키 페어 생성** → `minecraft-key.pem` 파일이 자동으로 다운로드됩니다
+
+> ⚠️ 이 파일은 **다시 받을 수 없습니다.** 잃어버리면 인스턴스를 새로 만들어야 합니다.
+> 보통 `다운로드` 폴더에 저장되니, 안전한 곳으로 옮겨두고 경로를 기억해두세요.
 
 ### 네트워크 설정 — 보안 그룹
 
@@ -121,18 +129,50 @@ AWS는 OCI와 달리 **리전을 나중에 바꿔도 됩니다.** 부담 없이 
 
 인스턴스 상세에서 **퍼블릭 IPv4 주소**를 복사합니다.
 
+아래 명령의 `minecraft-key.pem`은 **키 페어를 만들 때 정한 이름**입니다.
+다른 이름으로 만드셨다면 그 이름으로 바꿔서 쓰세요.
+
 **맥 / 리눅스:**
 ```bash
-chmod 400 ~/Downloads/키이름.pem
-ssh -i ~/Downloads/키이름.pem ubuntu@퍼블릭IP
+cd ~/Downloads
+chmod 400 minecraft-key.pem          # 권한을 안 조이면 SSH가 키를 거부합니다
+ssh -i minecraft-key.pem ubuntu@퍼블릭IP
 ```
 
 **윈도우 PowerShell:**
 ```powershell
-icacls .\키이름.pem /inheritance:r
-icacls .\키이름.pem /grant:r "$($env:USERNAME):(R)"
-ssh -i .\키이름.pem ubuntu@퍼블릭IP
+cd $HOME\Downloads
+icacls .\minecraft-key.pem /inheritance:r
+icacls .\minecraft-key.pem /grant:r "$($env:USERNAME):(R)"
+ssh -i .\minecraft-key.pem ubuntu@퍼블릭IP
 ```
+
+`ubuntu@ip-172-31-...:~$` 같은 프롬프트가 뜨면 접속 성공입니다.
+
+### 키 이름이 기억나지 않는다면
+
+EC2 콘솔 → 인스턴스 선택 → **세부 정보** 탭 → **키 페어 이름** 항목에 있습니다.
+실제 파일은 보통 `다운로드` 폴더에 그 이름 + `.pem` 으로 저장돼 있습니다.
+
+파일을 찾는 명령:
+
+```bash
+# 맥 / 리눅스
+ls ~/Downloads/*.pem
+```
+```powershell
+# 윈도우
+Get-ChildItem -Path $HOME -Filter *.pem -Recurse -ErrorAction SilentlyContinue
+```
+
+### 자주 막히는 부분
+
+| 증상 | 원인 |
+|---|---|
+| `Permission denied (publickey)` | 사용자 이름이 틀림. 우분투는 **`ubuntu`** (`root`·`ec2-user` 아님) |
+| `UNPROTECTED PRIVATE KEY FILE` | `chmod 400` / `icacls` 를 안 함 |
+| `No such file or directory` | `.pem` 파일 경로가 틀림. 위 명령으로 파일을 먼저 찾으세요 |
+| `Connection timed out` | 보안 그룹에 SSH(22) 규칙이 없거나, 내 IP가 바뀜 |
 
 ---
 
