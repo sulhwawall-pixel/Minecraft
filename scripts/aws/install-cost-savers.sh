@@ -51,6 +51,15 @@ echo
 read -rp "    도메인 이름 (예: my-sunlit  ← .duckdns.org 앞부분만): " DOMAIN
 
 if [[ -n "$DOMAIN" ]]; then
+  # DuckDNS API 는 .duckdns.org 앞부분만 받는다. 전체 주소를 붙여넣는 실수가
+  # 잦아서 프로토콜과 도메인 꼬리를 여기서 정리한다.
+  ORIG_DOMAIN="$DOMAIN"
+  DOMAIN="${DOMAIN#http://}"
+  DOMAIN="${DOMAIN#https://}"
+  DOMAIN="${DOMAIN%%/*}"
+  DOMAIN="${DOMAIN%%.duckdns.org*}"
+  [[ "$DOMAIN" == "$ORIG_DOMAIN" ]] || warn "'${ORIG_DOMAIN}' 를 '${DOMAIN}' 로 정리했습니다."
+  [[ -n "$DOMAIN" ]] || die "도메인 이름을 알아보지 못했습니다: $ORIG_DOMAIN"
   read -rp "    토큰 (DuckDNS 페이지 상단의 token): " TOKEN
   [[ -n "$TOKEN" ]] || die "토큰이 필요합니다."
 

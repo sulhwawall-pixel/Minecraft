@@ -350,8 +350,45 @@ sudo bash scripts/aws/install-cost-savers.sh
 - **유휴 자동 종료**: 30분간 접속자가 없으면 인스턴스가 스스로 정지합니다
 - **DuckDNS**: 켤 때마다 바뀌는 IP를 고정 주소로 덮어줍니다 (설치 중 입력)
 
-DuckDNS 도메인은 https://www.duckdns.org 에서 구글 로그인만 하면 1분 만에
-무료로 만들 수 있습니다. 스크립트가 도메인 이름과 토큰을 물어봅니다.
+스크립트가 **도메인 이름**과 **토큰** 두 가지를 물어봅니다. 먼저 아래처럼 준비하세요.
+
+### DuckDNS 도메인 만들기 (PC 브라우저에서, 1분)
+
+1. https://www.duckdns.org 접속
+2. 위쪽의 **Google / GitHub** 등으로 로그인 (가입 절차 따로 없음)
+3. 로그인하면 나오는 화면 맨 위에 **`token`** 이 길게 적혀 있습니다 → **복사해두세요**
+4. 아래 **domains** 칸에 원하는 이름을 입력 (예: `my-sunlit`) → **add domain** 클릭
+5. 목록에 `my-sunlit.duckdns.org` 가 생기면 끝입니다
+
+### ⚠️ "current ip" 칸은 건드리지 마세요
+
+도메인을 만들면 **`current ip` 에 값이 자동으로 채워집니다.
+그건 서버 IP가 아니라 지금 접속한 내 PC의 IP라서 틀린 값입니다.**
+
+**손으로 고칠 필요 없습니다.** 서버에서 스크립트를 설치하면 곧바로 EC2의
+실제 IP로 덮어쓰고, 이후 5분마다 자동으로 갱신합니다. 인스턴스를 껐다 켜서
+IP가 바뀌어도 알아서 따라갑니다.
+
+### 스크립트에 입력할 값
+
+| 물어보는 것 | 넣을 값 | 예시 |
+|---|---|---|
+| 도메인 이름 | **`.duckdns.org` 앞부분만** | `my-sunlit` ← `my-sunlit.duckdns.org` (X) |
+| 토큰 | 3번에서 복사한 문자열 | `a1b2c3d4-...` |
+
+설치가 끝나면 `my-sunlit.duckdns.org -> 3.35.x.x 갱신 완료` 같은 줄이 나옵니다.
+그러면 정상입니다.
+
+DuckDNS를 안 쓰고 싶으면 도메인 이름을 묻는 곳에서 그냥 Enter를 누르면 건너뜁니다.
+대신 인스턴스를 껐다 켤 때마다 친구들에게 새 IP를 알려줘야 합니다.
+
+### 나중에 확인하고 싶을 때
+
+```bash
+sudo cat /etc/duckdns.conf          # 저장된 도메인·토큰
+sudo /opt/minecraft/duckdns-update.sh   # 지금 즉시 갱신 시도
+journalctl -t duckdns -n 20         # 갱신 기록
+```
 
 ---
 
