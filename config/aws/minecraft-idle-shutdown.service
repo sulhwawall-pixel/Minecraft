@@ -1,0 +1,7 @@
+[Unit]
+Description=Stop the instance when nobody is playing
+After=minecraft.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/minecraft/idle-shutdown.sh

@@ -72,6 +72,16 @@ CPU 2코어가 빠듯한 편이라 시야거리를 8로 낮춰뒀고, 이 상태
 | ? | [문제 해결](docs/06-troubleshooting.md) | — |
 | ? | [다른 선택지 (AWS·집 PC·유료 호스팅 비교)](docs/07-alternatives.md) | — |
 
+### AWS로 하는 경우
+
+OCI 대신 AWS 크레딧으로 **최대 6개월** 돌리는 방법입니다.
+둘 다 Ubuntu ARM64라 설치 스크립트는 그대로 씁니다.
+
+| 단계 | 문서 |
+|---|---|
+| 1 | [AWS 계정 · EC2 인스턴스 · 서버 설치](docs/aws/01-setup.md) |
+| 2 | [자동으로 켜고 끄기 (PC 없이)](docs/aws/02-auto-onoff.md) |
+
 ※ 2단계에서 **"Out of host capacity"** 가 뜨는 일이 흔합니다. 무료 ARM 서버는 인기가
 많아서 자리가 없을 때가 많습니다. 대처법은 2단계 문서에 정리해뒀습니다.
 

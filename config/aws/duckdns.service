@@ -1,0 +1,14 @@
+[Unit]
+Description=Point the DuckDNS hostname at this instance's current public IP
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/minecraft/duckdns-update.sh
+# 부팅 직후에는 네트워크가 아직 덜 올라와 실패할 수 있으므로 몇 번 다시 시도한다.
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
